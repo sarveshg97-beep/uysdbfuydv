@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Petal Notes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a list pane and an editor pane side by side on wide screens;
+   on phones only one pane shows at a time, switched by app state. */
+:root {
+  --bg: #fdeef3;
+  --panel: #fff6f9;
+  --card: #ffffff;
+  --ink: #45283a;
+  --muted: #9a7488;
+  --faint: #c78da3;
+  --accent: #d6487e;
+  --accent-dark: #b03767;
+  --accent-ink: #ffffff;
+  --accent-soft: #fbd9e6;
+  --line: #f3cddd;
+  --danger: #a3394f;
+  --highlight: #ffe8b8;
+  color-scheme: light;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  overflow: hidden;
+}
+#app {
+  height: 100%;
+  display: flex;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* ---------- Sidebar / list pane ---------- */
+.pane-list {
+  width: 340px;
+  min-width: 0;
+  flex: none;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.list-top {
+  padding: 16px 16px 10px;
+  display: grid;
+  gap: 10px;
+}
+.brand {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.brand h1 {
+  margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 600;
+  font-size: 22px;
+  color: var(--accent-dark);
+}
+.brand .count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.search-row { position: relative; }
+.search-row input {
+  width: 100%;
+  font: inherit;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 9px 12px 9px 32px;
+  outline: none;
+}
+.search-row svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--faint); }
+.new-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  background: var(--accent); color: var(--accent-ink); border: none;
+  border-radius: 12px; padding: 10px 14px; font: inherit; font-weight: 600;
+  cursor: pointer;
+}
+.new-btn:hover { background: var(--accent-dark); }
+
+.note-list { list-style: none; margin: 0; padding: 6px 10px 90px; overflow-y: auto; flex: 1 1 auto; min-height: 0; }
+.note-item {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 12px 10px; border-radius: 14px; cursor: pointer;
+  border: 1px solid transparent;
+}
+.note-item:hover { background: var(--card); }
+.note-item.active { background: var(--card); border-color: var(--accent-soft); box-shadow: 0 2px 10px -4px rgba(214,72,126,0.35); }
+.dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex: none; }
+.note-item .meta { min-width: 0; flex: 1 1 auto; }
+.note-item h3 { margin: 0 0 2px; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; display: flex; align-items: center; gap: 6px; }
+.note-item h3 svg.pin { width: 12px; height: 12px; color: var(--accent); flex: none; }
+.note-item p { margin: 0; font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.note-item .when { font-size: 11px; color: var(--faint); margin-top: 3px; }
+.empty-list { text-align: center; color: var(--muted); padding: 40px 16px; font-size: 14px; }
+
+/* ---------- Editor pane ---------- */
+.pane-editor { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; background: var(--bg); min-height: 0; }
+.editor-header {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 12px 18px; border-bottom: 1px solid var(--line); background: var(--panel);
+}
+.back-btn { display: none; background: none; border: none; cursor: pointer; color: var(--accent-dark); padding: 6px; border-radius: 10px; }
+.back-btn svg { width: 20px; height: 20px; display: block; }
+.title-input {
+  flex: 1 1 240px; min-width: 0; font-family: "Fraunces", Georgia, serif; font-weight: 600;
+  font-size: 21px; color: var(--ink); background: transparent; border: none; outline: none;
+}
+.title-input::placeholder { color: var(--faint); }
+.icon-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--card); cursor: pointer; color: var(--ink); flex: none;
+}
+.icon-btn svg { width: 17px; height: 17px; }
+.icon-btn:hover { border-color: var(--accent); }
+.icon-btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.icon-btn.danger { color: var(--danger); }
+.icon-btn.danger.armed { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+.colors-row { display: flex; gap: 6px; }
+.swatch { width: 20px; height: 20px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
+.swatch.sel { border-color: var(--ink); }
+
+.toolbar {
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  padding: 8px 18px; border-bottom: 1px solid var(--line); background: var(--card);
+}
+.toolbar button {
+  font: inherit; font-size: 13px; font-weight: 600; color: var(--ink);
+  background: transparent; border: 1px solid transparent; border-radius: 8px;
+  padding: 6px 9px; cursor: pointer; min-width: 32px;
+}
+.toolbar button:hover { background: var(--accent-soft); }
+.toolbar button.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-dark); }
+.toolbar .sep { width: 1px; align-self: stretch; background: var(--line); margin: 4px 4px; }
+.toolbar button.mic { color: var(--accent-dark); }
+.toolbar button.mic.listening { background: var(--accent); color: #fff; animation: pulse 1.4s infinite; }
+@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(214,72,126,0.4);} 50% { box-shadow: 0 0 0 7px rgba(214,72,126,0);} }
+
+.editor-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+#editor {
+  flex: 1 1 auto; min-height: 220px; outline: none;
+  background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+  padding: 16px 18px; font-size: 16px; line-height: 1.7; overflow-wrap: anywhere;
+}
+#editor:empty::before { content: attr(data-placeholder); color: var(--faint); }
+#editor h2 { font-family: "Fraunces", Georgia, serif; font-size: 20px; margin: 0 0 8px; color: var(--accent-dark); }
+#editor ul, #editor ol { padding-left: 22px; margin: 6px 0; }
+#editor mark { background: var(--highlight); border-radius: 3px; padding: 0 2px; }
+.checklist-line { display: flex; align-items: flex-start; gap: 8px; margin: 4px 0; }
+.checklist-line input[type="checkbox"] { margin-top: 5px; width: 16px; height: 16px; accent-color: var(--accent); flex: none; }
+.checklist-line span { outline: none; flex: 1 1 auto; }
+.checklist-line.done span { color: var(--muted); text-decoration: line-through; }
+
+.tags-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.tag-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--accent-soft); color: var(--accent-dark); border-radius: 999px;
+  padding: 4px 10px; font-size: 12px; font-weight: 600;
+}
+.tag-chip button { background: none; border: none; color: inherit; cursor: pointer; padding: 0; font-size: 13px; line-height: 1; }
+.tag-input { font: inherit; font-size: 12px; border: 1px dashed var(--faint); background: transparent; border-radius: 999px; padding: 4px 10px; outline: none; color: var(--muted); width: 110px; }
+
+.assist {
+  border: 1px solid var(--line); background: var(--panel); border-radius: 14px; padding: 12px 14px;
+  display: grid; gap: 8px;
+}
+.assist-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.assist-head h4 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-dark); display: flex; align-items: center; gap: 6px; }
+.assist-head h4 svg { width: 14px; height: 14px; }
+.assist-stats { font-size: 12px; color: var(--muted); }
+.assist-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.assist-actions button {
+  font: inherit; font-size: 12px; font-weight: 600; color: var(--accent-dark);
+  background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer;
+}
+.assist-actions button:hover { border-color: var(--accent); }
+.assist-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.assist-chips button { font: inherit; font-size: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; cursor: pointer; color: var(--ink); }
+.assist-chips button:hover { border-color: var(--accent); }
+
+.empty-editor { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; color: var(--muted); text-align: center; padding: 40px; }
+.empty-editor .inner { display: grid; gap: 10px; max-width: 280px; }
+.empty-editor .inner strong { font-family: "Fraunces", Georgia, serif; font-size: 19px; color: var(--ink); }
+
+.fab {
+  display: none; position: fixed; right: calc(20px + env(safe-area-inset-right, 0px));
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  width: 56px; height: 56px; border-radius: 50%; background: var(--accent); color: #fff;
+  border: none; align-items: center; justify-content: center; box-shadow: 0 10px 24px -10px rgba(176,55,103,0.6);
+  cursor: pointer; z-index: 5;
+}
+.fab svg { width: 24px; height: 24px; }
+
+.status-toast {
+  position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translate(-50%, 0); background: var(--ink); color: #fff; font-size: 13px;
+  padding: 8px 16px; border-radius: 999px; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; z-index: 20;
+}
+.status-toast.show { opacity: 0.92; }
+
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (max-width: 760px) {
+  #app.view-list .pane-editor { display: none; }
+  #app.view-editor .pane-list { display: none; }
+  .pane-list, .pane-editor { width: 100%; }
+  .back-btn { display: flex; }
+  .fab { display: flex; }
+  .colors-row { order: 3; width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div id="app" class="view-list">
+  <!-- List pane -->
+  <aside class="pane-list">
+    <div class="list-top">
+      <div class="brand">
+        <h1>Petal Notes</h1>
+        <span class="count" id="noteCount"></span>
+      </div>
+      <div class="search-row">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input id="search" type="search" placeholder="Search your notes" aria-label="Search notes">
+      </div>
+      <button type="button" class="new-btn" id="newNoteBtn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        New note
+      </button>
+    </div>
+    <ul class="note-list" id="noteList"></ul>
+  </aside>
+
+  <!-- Editor pane -->
+  <section class="pane-editor" id="editorPane">
+    <div class="empty-editor" id="emptyEditor">
+      <div class="inner">
+        <strong>No note open</strong>
+        <span>Pick a note from the list, or start a new one.</span>
+      </div>
+    </div>
+
+    <div id="editorShell" hidden style="display:contents">
+      <header class="editor-header">
+        <button type="button" class="back-btn" id="backBtn" aria-label="Back to notes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <input id="titleInput" class="title-input" type="text" placeholder="Untitled note" maxlength="120">
+        <div class="colors-row" id="colorsRow" aria-label="Note color"></div>
+        <button type="button" class="icon-btn" id="pinBtn" aria-label="Pin note" title="Pin">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l1.8 5.6L19 9l-4 4 .9 6-3.9-3-3.9 3 .9-6-4-4 5.2-1.4z"/></svg>
+        </button>
+        <button type="button" class="icon-btn danger" id="deleteBtn" aria-label="Delete note" title="Delete">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3m-7 0 1 13h6l1-13"/></svg>
+        </button>
+      </header>
+
+      <div class="toolbar" id="toolbar">
+        <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
+        <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
+        <button type="button" data-cmd="underline" title="Underline"><u>U</u></button>
+        <button type="button" data-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>
+        <span class="sep"></span>
+        <button type="button" data-cmd="heading" title="Heading">H</button>
+        <button type="button" data-cmd="highlight" title="Highlight">✎</button>
+        <span class="sep"></span>
+        <button type="button" data-cmd="insertUnorderedList" title="Bullet list">• list</button>
+        <button type="button" data-cmd="insertOrderedList" title="Numbered list">1. list</button>
+        <button type="button" data-cmd="checklist" title="Checklist">☑ check</button>
+        <span class="sep"></span>
+        <button type="button" data-cmd="clear" title="Clear formatting">Clear</button>
+        <span class="sep"></span>
+        <button type="button" class="mic" id="micBtn" title="Dictate with your voice">🎙 Voice</button>
+      </div>
+
+      <div class="editor-body">
+        <div id="editor" contenteditable="true" data-placeholder="Start writing…" aria-label="Note content"></div>
+
+        <div class="tags-row" id="tagsRow" aria-label="Tags"></div>
+
+        <div class="assist">
+          <div class="assist-head">
+            <h4>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l1.8 5.6L19 9l-5.2 1.4L12 16l-1.8-5.6L5 9l5.2-1.4z"/></svg>
+              Smart Assist
+            </h4>
+            <span class="assist-stats" id="assistStats">0 words</span>
+          </div>
+          <div class="assist-actions">
+            <button type="button" id="suggestTitleBtn">Suggest a title</button>
+            <button type="button" id="suggestTagsBtn">Suggest tags</button>
+          </div>
+          <div class="assist-chips" id="assistChips" hidden></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<button type="button" class="fab" id="fabNew" aria-label="New note">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+<div class="status-toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  "use strict";
+  var KEY = "petal-notes-v1";
+  var COLORS = ["#d6487e", "#e0923f", "#5b9a6f", "#4b86c9", "#8b6fce", "#9a7488"];
+  var STOPWORDS = ("the a an and or but if of to in on for with is are was were be been being this that these "
+    + "those it its as at by from into about over under again further then once here there all any both each few "
+    + "more most other some such no nor not only own same so than too very can will just should now i you he she "
+    + "we they my your his her our their me him them").split(" ").reduce(function (s, w) { s[w] = true; return s; }, {});
+
+  var $ = function (id) { return document.getElementById(id); };
+  var app = $("app"), noteListEl = $("noteList"), noteCountEl = $("noteCount"), searchEl = $("search");
+  var newNoteBtn = $("newNoteBtn"), fabNew = $("fabNew"), backBtn = $("backBtn");
+  var emptyEditor = $("emptyEditor"), editorShell = $("editorShell");
+  var titleInput = $("titleInput"), editor = $("editor"), colorsRow = $("colorsRow");
+  var pinBtn = $("pinBtn"), deleteBtn = $("deleteBtn"), toolbar = $("toolbar"), micBtn = $("micBtn");
+  var tagsRow = $("tagsRow"), assistStats = $("assistStats"), assistChips = $("assistChips");
+  var suggestTitleBtn = $("suggestTitleBtn"), suggestTagsBtn = $("suggestTagsBtn"), toast = $("toast");
+
+  var notes = loadNotes();
+  var activeId = null;
+  var saveTimer = null;
+
+  function loadNotes() {
+    try {
+      var v = JSON.parse(localStorage.getItem(KEY) || "[]");
+      return Array.isArray(v) ? v : [];
+    } catch (e) { return []; }
+  }
+  function persist() {
+    try { localStorage.setItem(KEY, JSON.stringify(notes)); }
+    catch (e) { showToast("Couldn't save to this browser."); }
+  }
+
+  var toastTimer = null;
+  function showToast(text) {
+    toast.textContent = text;
+    toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toast.classList.remove("show"); }, 1800);
+  }
+
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+  function plainText(html) {
+    var d = document.createElement("div");
+    d.innerHTML = html || "";
+    return (d.textContent || "").replace(/\s+/g, " ").trim();
+  }
+
+  function fmtWhen(ts) {
+    try {
+      var d = new Date(ts), now = new Date();
+      var sameDay = d.toDateString() === now.toDateString();
+      return sameDay
+        ? d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+        : d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+    } catch (e) { return ""; }
+  }
+
+  // ---------- Rendering the note list ----------
+  function renderList() {
+    var q = searchEl.value.trim().toLowerCase();
+    var filtered = notes.filter(function (n) {
+      if (!q) return true;
+      var hay = (n.title + " " + plainText(n.body) + " " + (n.tags || []).join(" ")).toLowerCase();
+      return hay.indexOf(q) !== -1;
+    });
+    filtered.sort(function (a, b) {
+      if (!!b.pinned !== !!a.pinned) return b.pinned ? 1 : -1;
+      return b.updated - a.updated;
+    });
+
+    noteListEl.textContent = "";
+    if (!filtered.length) {
+      var li = document.createElement("li");
+      li.className = "empty-list";
+      li.textContent = notes.length ? "No notes match your search." : "No notes yet. Tap “New note” to begin.";
+      noteListEl.appendChild(li);
+    }
+    filtered.forEach(function (n) {
+      var li = document.createElement("li");
+      li.className = "note-item" + (n.id === activeId ? " active" : "");
+      li.tabIndex = 0;
+
+      var dot = document.createElement("span");
+      dot.className = "dot";
+      dot.style.background = n.color || COLORS[0];
+      li.appendChild(dot);
+
+      var meta = document.createElement("div");
+      meta.className = "meta";
+      var h3 = document.createElement("h3");
+      if (n.pinned) {
+        var pin = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        pin.setAttribute("class", "pin"); pin.setAttribute("viewBox", "0 0 24 24"); pin.setAttribute("fill", "currentColor");
+        pin.innerHTML = '<path d="M12 2l1.8 5.6L19 9l-4 4 .9 6-3.9-3-3.9 3 .9-6-4-4 5.2-1.4z"/>';
+        h3.appendChild(pin);
+      }
+      h3.appendChild(document.createTextNode(n.title || "Untitled note"));
+      var p = document.createElement("p");
+      p.textContent = plainText(n.body) || "No additional text";
+      var when = document.createElement("div");
+      when.className = "when";
+      when.textContent = fmtWhen(n.updated);
+      meta.appendChild(h3); meta.appendChild(p); meta.appendChild(when);
+      li.appendChild(meta);
+
+      li.addEventListener("click", function () { openNote(n.id); });
+      li.addEventListener("keydown", function (e) { if (e.key === "Enter") openNote(n.id); });
+      noteListEl.appendChild(li);
+    });
+
+    noteCountEl.textContent = notes.length ? (notes.length + (notes.length === 1 ? " note" : " notes")) : "";
+  }
+
+  // ---------- Opening / editing a note ----------
+  function openNote(id) {
+    activeId = id;
+    var n = notes.find(function (x) { return x.id === id; });
+    if (!n) { showEmptyEditor(); return; }
+
+    emptyEditor.hidden = true;
+    editorShell.hidden = false;
+    titleInput.value = n.title || "";
+    editor.innerHTML = n.body || "";
+    renderColors(n);
+    renderTags(n);
+    updatePinButton(n);
+    updateAssistStats();
+    app.className = "view-editor";
+    renderList();
+  }
+
+  function showEmptyEditor() {
+    activeId = null;
+    emptyEditor.hidden = false;
+    editorShell.hidden = true;
+    app.className = "view-list";
+    renderList();
+  }
+
+  function currentNote() {
+    return notes.find(function (x) { return x.id === activeId; });
+  }
+
+  function scheduleSave() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(doSave, 300);
+  }
+  function doSave() {
+    var n = currentNote();
+    if (!n) return;
+    n.title = titleInput.value.trim();
+    n.body = editor.innerHTML;
+    n.updated = Date.now();
+    persist();
+    renderList();
+  }
+
+  function newNote() {
+    var n = {
+      id: uid(), title: "", body: "", tags: [], color: COLORS[0],
+      pinned: false, created: Date.now(), updated: Date.now(),
+    };
+    notes.unshift(n);
+    persist();
+    openNote(n.id);
+    titleInput.focus();
+  }
+
+  newNoteBtn.addEventListener("click", newNote);
+  fabNew.addEventListener("click", newNote);
+  backBtn.addEventListener("click", showEmptyEditor);
+  searchEl.addEventListener("input", renderList);
+  titleInput.addEventListener("input", scheduleSave);
+  editor.addEventListener("input", function () { scheduleSave(); updateAssistStats(); });
+
+  // ---------- Colors ----------
+  function renderColors(n) {
+    colorsRow.textContent = "";
+    COLORS.forEach(function (c) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "swatch" + (n.color === c ? " sel" : "");
+      b.style.background = c;
+      b.setAttribute("aria-label", "Set note color");
+      b.addEventListener("click", function () {
+        n.color = c; n.updated = Date.now(); persist(); renderColors(n); renderList();
+      });
+      colorsRow.appendChild(b);
+    });
+  }
+
+  // ---------- Pin / delete ----------
+  function updatePinButton(n) {
+    pinBtn.classList.toggle("on", !!n.pinned);
+  }
+  pinBtn.addEventListener("click", function () {
+    var n = currentNote(); if (!n) return;
+    n.pinned = !n.pinned; n.updated = Date.now();
+    persist(); updatePinButton(n); renderList();
+  });
+
+  var deleteArmed = false, deleteTimer = null;
+  deleteBtn.addEventListener("click", function () {
+    if (!deleteArmed) {
+      deleteArmed = true;
+      deleteBtn.classList.add("armed");
+      clearTimeout(deleteTimer);
+      deleteTimer = setTimeout(function () { deleteArmed = false; deleteBtn.classList.remove("armed"); }, 3000);
+      return;
+    }
+    deleteArmed = false; deleteBtn.classList.remove("armed");
+    var n = currentNote(); if (!n) return;
+    notes = notes.filter(function (x) { return x.id !== n.id; });
+    persist();
+    showToast("Note deleted");
+    showEmptyEditor();
+  });
+
+  // ---------- Tags ----------
+  function renderTags(n) {
+    tagsRow.textContent = "";
+    (n.tags || []).forEach(function (t) {
+      var chip = document.createElement("span");
+      chip.className = "tag-chip";
+      var txt = document.createElement("span");
+      txt.textContent = t;
+      var rm = document.createElement("button");
+      rm.type = "button"; rm.textContent = "×"; rm.setAttribute("aria-label", "Remove tag " + t);
+      rm.addEventListener("click", function () {
+        n.tags = n.tags.filter(function (x) { return x !== t; });
+        n.updated = Date.now(); persist(); renderTags(n);
+      });
+      chip.appendChild(txt); chip.appendChild(rm);
+      tagsRow.appendChild(chip);
+    });
+    var input = document.createElement("input");
+    input.className = "tag-input";
+    input.placeholder = "+ tag";
+    input.setAttribute("aria-label", "Add a tag");
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        var v = input.value.trim().toLowerCase().slice(0, 24);
+        if (v && (n.tags || []).indexOf(v) === -1) {
+          n.tags = (n.tags || []).concat([v]);
+          n.updated = Date.now(); persist(); renderTags(n); renderList();
+        } else {
+          input.value = "";
+        }
+      }
+    });
+    tagsRow.appendChild(input);
+  }
+
+  // ---------- Toolbar: formatting ----------
+  function placeCaretEnd(el) {
+    el.focus();
+    var range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  function insertChecklistLine() {
+    var line = document.createElement("div");
+    line.className = "checklist-line";
+    var cb = document.createElement("input");
+    cb.type = "checkbox"; cb.contentEditable = "false";
+    cb.addEventListener("change", function () {
+      line.classList.toggle("done", cb.checked);
+      scheduleSave();
+    });
+    var span = document.createElement("span");
+    span.contentEditable = "true";
+    span.textContent = "";
+    line.appendChild(cb); line.appendChild(span);
+
+    var sel = window.getSelection();
+    if (sel && sel.rangeCount && editor.contains(sel.anchorNode)) {
+      var range = sel.getRangeAt(0);
+      range.collapse(false);
+      range.insertNode(line);
+    } else {
+      editor.appendChild(line);
+    }
+    var r = document.createRange();
+    r.selectNodeContents(span); r.collapse(true);
+    var s2 = window.getSelection(); s2.removeAllRanges(); s2.addRange(r);
+    scheduleSave();
+  }
+
+  function toggleHeading() {
+    try { document.execCommand("formatBlock", false, "H2"); }
+    catch (e) {}
+  }
+
+  toolbar.addEventListener("click", function (e) {
+    var btn = e.target.closest("button[data-cmd]");
+    if (!btn) return;
+    editor.focus();
+    var cmd = btn.getAttribute("data-cmd");
+    try {
+      if (cmd === "checklist") { insertChecklistLine(); }
+      else if (cmd === "heading") { toggleHeading(); }
+      else if (cmd === "highlight") {
+        if (!document.execCommand("hiliteColor", false, "#ffe8b8")) {
+          document.execCommand("backColor", false, "#ffe8b8");
+        }
+      } else if (cmd === "clear") {
+        document.execCommand("removeFormat");
+      } else {
+        document.execCommand(cmd, false, null);
+      }
+    } catch (err) { /* execCommand can be unsupported in some browsers; fail quietly */ }
+    scheduleSave();
+    updateAssistStats();
+  });
+
+  // ---------- Voice dictation (the app's one small AI feature) ----------
+  var Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var recog = null, listening = false;
+  if (!Recognition) {
+    micBtn.disabled = true;
+    micBtn.title = "Voice dictation isn't supported in this browser";
+    micBtn.style.opacity = "0.5";
+  } else {
+    recog = new Recognition();
+    recog.continuous = true;
+    recog.interimResults = false;
+    recog.lang = (navigator.language || "en-US");
+
+    recog.onresult = function (event) {
+      var chunk = "";
+      for (var i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) chunk += event.results[i][0].transcript;
+      }
+      if (chunk) {
+        editor.focus();
+        document.execCommand("insertText", false, chunk);
+        scheduleSave();
+        updateAssistStats();
+      }
+    };
+    recog.onerror = function () { stopListening(); showToast("Voice dictation stopped"); };
+    recog.onend = function () { if (listening) stopListening(); };
+
+    function startListening() {
+      try { recog.start(); } catch (e) { return; }
+      listening = true;
+      micBtn.classList.add("listening");
+      placeCaretEnd(editor);
+    }
+    function stopListening() {
+      try { recog.stop(); } catch (e) {}
+      listening = false;
+      micBtn.classList.remove("listening");
+    }
+    micBtn.addEventListener("click", function () {
+      if (listening) stopListening(); else startListening();
+    });
+  }
+
+  // ---------- Smart Assist (on-device heuristics, not a cloud AI) ----------
+  function updateAssistStats() {
+    var text = plainText(editor.innerHTML);
+    var words = text ? text.split(/\s+/).length : 0;
+    var mins = Math.max(1, Math.round(words / 200));
+    assistStats.textContent = words + (words === 1 ? " word" : " words") + " · ~" + mins + " min read";
+  }
+
+  function firstSentence(text) {
+    var m = text.match(/^[^.!?\n]{3,80}[.!?]?/);
+    var s = m ? m[0].trim() : text.slice(0, 60).trim();
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  suggestTitleBtn.addEventListener("click", function () {
+    var n = currentNote(); if (!n) return;
+    var text = plainText(editor.innerHTML);
+    if (!text) { showToast("Write something first"); return; }
+    var suggestion = firstSentence(text).slice(0, 60).replace(/[.!?]$/, "");
+    titleInput.value = suggestion;
+    doSave();
+    showToast("Title suggested");
+  });
+
+  function topKeywords(text, count) {
+    var freq = {};
+    (text.toLowerCase().match(/[a-z']{3,}/g) || []).forEach(function (w) {
+      if (STOPWORDS[w]) return;
+      freq[w] = (freq[w] || 0) + 1;
+    });
+    return Object.keys(freq)
+      .sort(function (a, b) { return freq[b] - freq[a]; })
+      .slice(0, count);
+  }
+
+  suggestTagsBtn.addEventListener("click", function () {
+    var n = currentNote(); if (!n) return;
+    var text = plainText(editor.innerHTML);
+    if (!text) { showToast("Write something first"); return; }
+    var words = topKeywords(text, 5).filter(function (w) { return (n.tags || []).indexOf(w) === -1; });
+    assistChips.textContent = "";
+    if (!words.length) { showToast("No new tags to suggest"); return; }
+    words.forEach(function (w) {
+      var b = document.createElement("button");
+      b.type = "button"; b.textContent = "+ " + w;
+      b.addEventListener("click", function () {
+        n.tags = (n.tags || []).concat([w]);
+        n.updated = Date.now(); persist(); renderTags(n); renderList();
+        b.remove();
+      });
+      assistChips.appendChild(b);
+    });
+    assistChips.hidden = false;
+  });
+
+  // ---------- Boot ----------
+  if (window.innerWidth > 760 && notes.length) {
+    // On a wide screen, open the most recently edited note so the app isn't empty.
+    var sorted = notes.slice().sort(function (a, b) { return b.updated - a.updated; });
+    openNote(sorted[0].id);
+  } else {
+    showEmptyEditor();
+  }
+  renderList();
+})();
+</script>
+</body>
+</html>
